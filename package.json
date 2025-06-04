@@ -4,7 +4,7 @@
   "description": "Node.js server for sending FCM ringing notifications",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node index.js"
   },
   "dependencies": {
     "express": "^4.19.2",
