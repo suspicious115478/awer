@@ -7,7 +7,6 @@ const app = express();
 app.use(bodyParser.json());
 
 // Load Firebase service account from environment
-// It's crucial to parse this as a JSON object
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 // Initialize Firebase Admin
@@ -18,7 +17,7 @@ admin.initializeApp({
 // POST endpoint to send FCM notification
 app.post('/sendRingingNotification', async (req, res) => {
   try {
-    const { fcmToken, callerId } = req.body;
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
 
     if (!fcmToken || !callerId) {
       return res.status(400).send('Missing fcmToken or callerId');
@@ -26,17 +25,21 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const message = {
       token: fcmToken,
-      data: {
+      notification: { // <--- NEW: Notification payload for system tray
+        title: "Incoming Call",
+        body: `Incoming call from ${callerId}`,
+        // You can add a sound here if you want it to play for the tray notification
+        // "sound": "default" // Or your custom sound resource name (e.g., "ringtone")
+      },
+      data: { // <--- Existing: Data payload for custom handling
         type: "ring",
         callerId: callerId,
-        title: "Incoming Call",
-        body: "You have an incoming call",
-        // Add other data your Android app expects, e.g., Agora token, channel
-        // "token": "your_agora_token_here",
-        // "channel": "your_agora_channel_here"
+        // Ensure you send Agora token and channel here
+        "token": agoraToken || "",   // Send your Agora token
+        "channel": agoraChannel || "" // Send your Agora channel
       },
       android: {
-        priority: "high"
+        priority: "high" // Keep high priority for timely delivery
       }
     };
 
