@@ -1,4 +1,8 @@
+// Make sure you have admin initialized somewhere above this function
+// const admin = require('firebase-admin');
+// admin.initializeApp({ /* your service account config */ });
 
+// Assuming 'app' is your Express app instance
 app.post('/sendRingingNotification', (req, res) => {
     const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
