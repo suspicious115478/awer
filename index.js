@@ -40,6 +40,10 @@ app.post('/sendRingingNotification', async (req, res) => {
       },
       android: {
         priority: "high" // Keep high priority for timely delivery
+
+        notification: { // <--- ADD THIS BLOCK
+      channel_id: "incoming_call_channel" // <--- AND THIS LINE!
+    }
       }
     };
 
