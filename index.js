@@ -2,22 +2,18 @@ const express = require('express');
 const admin = require('firebase-admin');
 const bodyParser = require('body-parser');
 
-// Initialize Express
 const app = express();
 app.use(bodyParser.json());
 
-// Load Firebase service account from environment
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
-// Initialize Firebase Admin
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-// POST endpoint to send FCM notification
 app.post('/sendRingingNotification', async (req, res) => {
   try {
-    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
     if (!fcmToken || !callerId) {
       return res.status(400).send('Missing fcmToken or callerId');
@@ -25,25 +21,25 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const message = {
       token: fcmToken,
-      notification: { // <--- NEW: Notification payload for system tray
-        title: "Incoming Call",
-        body: `Incoming call from ${callerId}`,
-        // You can add a sound here if you want it to play for the tray notification
-        // "sound": "default" // Or your custom sound resource name (e.g., "ringtone")
-      },
-      data: { // <--- Existing: Data payload for custom handling
+      // *** IMPORTANT CHANGE: REMOVED 'notification' PAYLOAD ***
+      // notification: { // <--- REMOVE THIS BLOCK
+      //   title: "Incoming Call",
+      //   body: `Incoming call from ${callerId}`,
+      // },
+      data: { // <--- This is now the ONLY payload
         type: "ring",
         callerId: callerId,
-        // Ensure you send Agora token and channel here
-        "token": agoraToken || "",   // Send your Agora token
-        "channel": agoraChannel || "" // Send your Agora channel
+        "token": agoraToken || "",
+        "channel": agoraChannel || ""
       },
       android: {
-        priority: "high" // Keep high priority for timely delivery
-
-        notification: { // <--- ADD THIS BLOCK
-      channel_id: "incoming_call_channel" // <--- AND THIS LINE!
-    }
+        priority: "high", // Keep high priority for timely delivery
+        // Although the 'notification' block is removed,
+        // the channel_id for the Android-specific configuration is still useful
+        // as it influences how Android routes the notification built locally.
+        notification: {
+          channel_id: "incoming_call_channel" // Ensures the channel is used
+        }
       }
     };
 
@@ -56,12 +52,10 @@ app.post('/sendRingingNotification', async (req, res) => {
   }
 });
 
-// Add root GET route
 app.get('/', (req, res) => {
   res.send('FCM Server is running');
 });
 
-// Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
