@@ -5,6 +5,8 @@ const bodyParser = require('body-parser');
 const app = express();
 app.use(bodyParser.json());
 
+// Make sure your serviceAccount parsing is correct.
+// For production, environment variables are best.
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
 admin.initializeApp({
@@ -21,25 +23,15 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const message = {
       token: fcmToken,
-      // *** IMPORTANT CHANGE: REMOVED 'notification' PAYLOAD ***
-      // notification: { // <--- REMOVE THIS BLOCK
-      //   title: "Incoming Call",
-      //   body: `Incoming call from ${callerId}`,
-      // },
-      data: { // <--- This is now the ONLY payload
+      data: { // This is the ONLY payload that triggers onMessageReceived for killed/background apps
         type: "ring",
         callerId: callerId,
         "token": agoraToken || "",
         "channel": agoraChannel || ""
       },
-      android: {
-        priority: "high", // Keep high priority for timely delivery
-        // Although the 'notification' block is removed,
-        // the channel_id for the Android-specific configuration is still useful
-        // as it influences how Android routes the notification built locally.
-        notification: {
-          channel_id: "incoming_call_channel" // Ensures the channel is used
-        }
+      android: { // Critical for ensuring data-only messages wake up the app
+        priority: "high",
+        // ABSOLUTELY NO 'notification' OBJECT HERE OR ANYWHERE ELSE IN THE MESSAGE!
       }
     };
 
