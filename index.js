@@ -49,7 +49,7 @@ app.post('/sendRingingNotification', async (req, res) => {
           // Use `full_screen_intent` for critical alerts like incoming calls
           // This will require additional setup on the Android side (manifest permission)
           // https://developer.android.com/develop/ui/views/notifications/notification-channels#full_screen_intent
-          // full_screen_intent: true // Set to true to launch activity directly when device is locked/idle
+           full_screen_intent: true // Set to true to launch activity directly when device is locked/idle
         }
       }
     };
