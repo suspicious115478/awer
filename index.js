@@ -17,6 +17,11 @@ app.post('/sendRingingNotification', async (req, res) => {
   try {
     const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
+console.log('Received fcmToken:', fcmToken);
+console.log('Received callerId:', callerId);
+console.log('Received agoraToken:', agoraToken); // ADD THIS LOG
+console.log('Received agoraChannel:', agoraChannel);
+
     if (!fcmToken || !callerId) {
       return res.status(400).send('Missing fcmToken or callerId');
     }
