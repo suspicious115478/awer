@@ -1,59 +1,137 @@
+
+
 const express = require('express');
+
 const admin = require('firebase-admin');
+
 const bodyParser = require('body-parser');
 
+
+
+// Initialize Express
+
 const app = express();
+
 app.use(bodyParser.json());
 
-// Make sure your serviceAccount parsing is correct.
-// For production, environment variables are best.
+
+
+// Load Firebase service account from environment
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
+
+
+// Initialize Firebase Admin
+
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
+
+  credential: admin.credential.cert(serviceAccount),
+
 });
+
+
+
+// POST endpoint to send FCM notification
 
 app.post('/sendRingingNotification', async (req, res) => {
-  try {
-    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
-console.log('Received fcmToken:', fcmToken);
-console.log('Received callerId:', callerId);
-console.log('Received agoraToken:', agoraToken); // ADD THIS LOG
-console.log('Received agoraChannel:', agoraChannel);
+  try {
 
-    if (!fcmToken || !callerId) {
-      return res.status(400).send('Missing fcmToken or callerId');
-    }
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
 
-    const message = {
-      token: fcmToken,
-      data: { // This is the ONLY payload that triggers onMessageReceived for killed/background apps
-        type: "ring",
-        callerId: callerId,
-        "token": agoraToken || "",
-        "channel": agoraChannel || ""
-      },
-      android: { // Critical for ensuring data-only messages wake up the app
-        priority: "high",
-        // ABSOLUTELY NO 'notification' OBJECT HERE OR ANYWHERE ELSE IN THE MESSAGE!
-      }
-    };
 
-    const response = await admin.messaging().send(message);
-    console.log('FCM Message sent successfully:', response);
-    return res.status(200).send('Notification sent');
-  } catch (error) {
-    console.error('Error sending FCM:', error);
-    return res.status(500).send('Internal Server Error');
-  }
+
+    if (!fcmToken || !callerId) {
+
+      return res.status(400).send('Missing fcmToken or callerId');
+
+    }
+
+
+
+    const message = {
+
+      token: fcmToken,
+
+      notification: { // <--- NEW: Notification payload for system tray
+
+        title: "Incoming Call",
+
+        body: `Incoming call from ${callerId}`,
+
+        // You can add a sound here if you want it to play for the tray notification
+
+        // "sound": "default" // Or your custom sound resource name (e.g., "ringtone")
+
+      },
+
+      data: { // <--- Existing: Data payload for custom handling
+
+        type: "ring",
+
+        callerId: callerId,
+
+        // Ensure you send Agora token and channel here
+
+        "token": agoraToken || "",   // Send your Agora token
+
+        "channel": agoraChannel || "" // Send your Agora channel
+
+      },
+
+      android: {
+
+        priority: "high" // Keep high priority for timely delivery
+
+
+
+        notification: { // <--- ADD THIS BLOCK
+
+      channel_id: "incoming_call_channel" // <--- AND THIS LINE!
+
+    }
+
+      }
+
+    };
+
+
+
+    const response = await admin.messaging().send(message);
+
+    console.log('FCM Message sent successfully:', response);
+
+    return res.status(200).send('Notification sent');
+
+  } catch (error) {
+
+    console.error('Error sending FCM:', error);
+
+    return res.status(500).send('Internal Server Error');
+
+  }
+
 });
+
+
+
+// Add root GET route
 
 app.get('/', (req, res) => {
-  res.send('FCM Server is running');
+
+  res.send('FCM Server is running');
+
 });
 
+
+
+// Start server
+
 const port = process.env.PORT || 3000;
+
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+
+  console.log(`Server running on port ${port}`);
+
 });
