@@ -27,11 +27,11 @@ app.post('/sendRingingNotification', async (req, res) => {
       token: fcmToken,
       // The `notification` block is primarily for system tray display when the app is in the background/killed.
       // On Android, the `android` block will take precedence for specific behaviors.
-      notification: {
-        title: "Incoming Call",
-        body: `Incoming call from ${callerId}`,
-        // sound: "default" // You can set a default sound here if you want
-      },
+      // notification: {
+      //   title: "Incoming Call",
+      //   body: `Incoming call from ${callerId}`,
+      //   // sound: "default" // You can set a default sound here if you want
+      // },
       data: { // Data payload for custom handling in `onMessageReceived`
         type: "ring",
         callerId: callerId,
