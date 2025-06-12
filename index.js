@@ -62,7 +62,7 @@ app.post('/sendRingingNotification', async (req, res) => {
 
         body: `Incoming Video Call`,
 
-        // sound: "default" // You can set a default sound here if you want
+        sound: "ringtone" // You can set a default sound here if you want
 
       },
 
