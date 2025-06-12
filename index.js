@@ -17,7 +17,7 @@ admin.initializeApp({
 // POST endpoint to send FCM notification
 app.post('/sendRingingNotification', async (req, res) => {
   try {
-    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
     if (!fcmToken || !callerId) {
       return res.status(400).send('Missing fcmToken or callerId');
@@ -25,31 +25,26 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const message = {
       token: fcmToken,
-      // The `notification` block is primarily for system tray display when the app is in the background/killed.
-      // On Android, the `android` block will take precedence for specific behaviors.
-      // notification: {
-      //   title: "Incoming Call",
-      //   body: `Incoming call from ${callerId}`,
-      //   // sound: "default" // You can set a default sound here if you want
-      // },
+      // The top-level 'notification' block is correctly removed/commented out.
       data: { // Data payload for custom handling in `onMessageReceived`
         type: "ring",
         callerId: callerId,
         "token": agoraToken || "",
-        "channel": agoraChannel || ""
+        "channel": agoraChannel || "",
+        // --- ADDED: Notification title and body to data payload ---
+        "notification_title": "Incoming Call", // Title for the notification
+        "notification_body": `Incoming call from ${callerId}` // Body for the notification
       },
       android: {
         priority: "high", // Keep high priority for timely delivery and heads-up notification
         notification: {
-          channel_id: "incoming_call_channel", // IMPORTANT: This must match the channel ID in your Android app
+          channel_id: "incoming_call_channel", // IMPORTANT: Must match the channel ID in your Android app
           sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
-          // You can also add other properties like icon, color etc.
-          // click_action: "FLUTTER_NOTIFICATION_CLICK" // This is for Flutter, but conceptually similar for native Android if you want to route to a specific activity
           visibility: "public", // To show content on lock screen
-          // Use `full_screen_intent` for critical alerts like incoming calls
-          // This will require additional setup on the Android side (manifest permission)
-          // https://developer.android.com/develop/ui/views/notifications/notification-channels#full_screen_intent
-           full_screen_intent: true // Set to true to launch activity directly when device is locked/idle
+          full_screen_intent: true, // Set to true to launch activity directly when device is locked/idle
+          // --- ADDED: Small icon reference for Android ---
+          // This should match a drawable resource name in your Android app (e.g., res/drawable/ic_stat_call.png)
+          icon: "ic_stat_call"
         }
       }
     };
