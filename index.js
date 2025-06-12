@@ -17,33 +17,34 @@ admin.initializeApp({
 // POST endpoint to send FCM notification
 app.post('/sendRingingNotification', async (req, res) => {
   try {
+    console.log('Received /sendRingingNotification request');
     const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
 
+    console.log('Request body:', req.body); // Log the incoming request body
+
     if (!fcmToken || !callerId) {
+      console.log('Missing fcmToken or callerId (400)');
       return res.status(400).send('Missing fcmToken or callerId');
     }
 
+    console.log('Attempting to send FCM message to token:', fcmToken);
     const message = {
       token: fcmToken,
-      // The top-level 'notification' block is correctly removed/commented out.
-      data: { // Data payload for custom handling in `onMessageReceived`
+      data: {
         type: "ring",
         callerId: callerId,
         "token": agoraToken || "",
         "channel": agoraChannel || "",
-        // --- ADDED: Notification title and body to data payload ---
-        "notification_title": "Incoming Call", // Title for the notification
-        "notification_body": `Incoming call from ${callerId}` // Body for the notification
+        "notification_title": "Incoming Call",
+        "notification_body": `Incoming call from ${callerId}`
       },
       android: {
-        priority: "high", // Keep high priority for timely delivery and heads-up notification
+        priority: "high",
         notification: {
-          channel_id: "incoming_call_channel", // IMPORTANT: Must match the channel ID in your Android app
-          sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
-          visibility: "public", // To show content on lock screen
-          full_screen_intent: true, // Set to true to launch activity directly when device is locked/idle
-          // --- ADDED: Small icon reference for Android ---
-          // This should match a drawable resource name in your Android app (e.g., res/drawable/ic_stat_call.png)
+          channel_id: "incoming_call_channel",
+          sound: "ringtone",
+          visibility: "public",
+          full_screen_intent: true,
           icon: "ic_stat_call"
         }
       }
@@ -53,18 +54,9 @@ app.post('/sendRingingNotification', async (req, res) => {
     console.log('FCM Message sent successfully:', response);
     return res.status(200).send('Notification sent');
   } catch (error) {
+    // THIS IS THE CRITICAL PART: Log the full error object!
     console.error('Error sending FCM:', error);
+    console.error('Error details:', error.message, error.stack); // Get more details
     return res.status(500).send('Internal Server Error');
   }
-});
-
-// Add root GET route
-app.get('/', (req, res) => {
-  res.send('FCM Server is running');
-});
-
-// Start server
-const port = process.env.PORT || 3000;
-app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
 });
