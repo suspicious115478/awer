@@ -1,58 +1,75 @@
-
-// Import the express library
 const express = require('express');
-// Create an Express application instance
+const admin = require('firebase-admin');
+const bodyParser = require('body-parser');
+
+// Initialize Express
 const app = express();
+app.use(bodyParser.json());
 
-// Define the port the server will listen on.
-// process.env.PORT is crucial for deployment platforms like Render,
-// as they often provide the port via this environment variable.
-const PORT = process.env.PORT || 3000;
+// Load Firebase service account from environment
+const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
-// Middleware to parse JSON bodies for POST requests
-// This allows you to easily access JSON data sent in the request body.
-app.use(express.json());
+// Initialize Firebase Admin
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount),
+});
 
-// --- Routes ---
+// POST endpoint to send FCM notification
+app.post('/sendRingingNotification', async (req, res) => {
+  try {
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
 
-/**
- * Handles GET requests to the root path '/'.
- * This is a simple endpoint to confirm the server is running.
- */
+    if (!fcmToken || !callerId) {
+      return res.status(400).send('Missing fcmToken or callerId');
+    }
+
+    const message = {
+      token: fcmToken,
+      // The `notification` block is primarily for system tray display when the app is in the background/killed.
+      // On Android, the `android` block will take precedence for specific behaviors.
+      // notification: {
+      //   title: "Incoming Call",
+      //   body: `Incoming call from ${callerId}`,
+      //   // sound: "default" // You can set a default sound here if you want
+      // },
+      data: { // Data payload for custom handling in `onMessageReceived`
+        type: "ring",
+        callerId: callerId,
+        "token": agoraToken || "",
+        "channel": agoraChannel || ""
+      },
+      android: {
+        priority: "high", // Keep high priority for timely delivery and heads-up notification
+        notification: {
+          channel_id: "incoming_call_channel", // IMPORTANT: This must match the channel ID in your Android app
+          sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
+          // You can also add other properties like icon, color etc.
+          // click_action: "FLUTTER_NOTIFICATION_CLICK" // This is for Flutter, but conceptually similar for native Android if you want to route to a specific activity
+          visibility: "public", // To show content on lock screen
+          // Use `full_screen_intent` for critical alerts like incoming calls
+          // This will require additional setup on the Android side (manifest permission)
+          // https://developer.android.com/develop/ui/views/notifications/notification-channels#full_screen_intent
+           full_screen_intent: true // Set to true to launch activity directly when device is locked/idle
+        }
+      }
+    };
+
+    const response = await admin.messaging().send(message);
+    console.log('FCM Message sent successfully:', response);
+    return res.status(200).send('Notification sent');
+  } catch (error) {
+    console.error('Error sending FCM:', error);
+    return res.status(500).send('Internal Server Error');
+  }
+});
+
+// Add root GET route
 app.get('/', (req, res) => {
-  console.log(`[${new Date().toISOString()}] Received GET request on /`);
-  // Send a plain text response
-  res.status(200).send('Hello from Dummy Server! This is a GET request.');
+  res.send('FCM Server is running');
 });
 
-/**
- * Handles POST requests to the root path '/'.
- * It logs the request and any JSON body received.
- */
-app.post('/', (req, res) => {
-  console.log(`[${new Date().toISOString()}] Received POST request on /`);
-  console.log('Request Body:', req.body); // Log the body for debugging purposes
-
-  // Send a plain text success response
-  res.status(200).send('POST request received by Dummy Server! Data logged.');
-});
-
-/**
- * Handles all other requests (GET, POST, PUT, DELETE, etc.) to any other path.
- * This acts as a catch-all for undefined routes.
- */
-app.all('*', (req, res) => {
-  console.log(`[${new Date().toISOString()}] Received ${req.method} request on undefined path: ${req.path}`);
-  // Respond with a 404 Not Found status and a message
-  res.status(404).send('Not Found: This dummy server only responds to GET/POST on /');
-});
-
-
-// --- Start the server ---
-
-// Make the server listen on the defined PORT
-app.listen(PORT, () => {
-  console.log(`Dummy server listening on port ${PORT}`);
-  console.log(`Access it at: http://localhost:${PORT}`);
-  console.log('Press Ctrl+C to stop the server.');
+// Start server
+const port = process.env.PORT || 3000;
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
