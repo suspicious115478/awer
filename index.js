@@ -86,7 +86,7 @@ app.post('/sendRingingNotification', async (req, res) => {
 
           channel_id: "incoming_call_channel", // IMPORTANT: This must match the channel ID in your Android app
 
-          sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
+          // sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
 
           // You can also add other properties like icon, color etc.
 
