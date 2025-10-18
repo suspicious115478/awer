@@ -1,297 +1,102 @@
 const express = require('express');
-
-
-
 const admin = require('firebase-admin');
-
-
-
 const bodyParser = require('body-parser');
 
-
-
-
-
-
-
 // Initialize Express
-
-
-
 const app = express();
-
-
-
 app.use(bodyParser.json());
 
-
-
-
-
-
-
 // Load Firebase service account from environment
-
-
-
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
 
-
-
-
-
-
-
 // Initialize Firebase Admin
-
-
-
 admin.initializeApp({
-
-
-
-  credential: admin.credential.cert(serviceAccount),
-
-
-
+  credential: admin.credential.cert(serviceAccount),
 });
-
-
-
-
-
-
 
 // POST endpoint to send FCM notification
-
-
-
 app.post('/sendRingingNotification', async (req, res) => {
-
-
-
-  try {
-
-
-
-    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body; // Added agoraToken, agoraChannel
-
-
-
-
-
-
-
-    if (!fcmToken || !callerId) {
-
-
-
-      return res.status(400).send('Missing fcmToken or callerId');
-
-
-
-    }
-
-
-
-
-
-
-
-    const message = {
-
-
-
-      token: fcmToken,
-
-
-
-      // The `notification` block is primarily for system tray display when the app is in the background/killed.
-
-
-
-      // On Android, the `android` block will take precedence for specific behaviors.
-
-
-
-      notification: {
-
-
-
-        title: "Incoming Call",
-
-
-
-        body: `Incoming call from ${callerId}`,
-
-
-
-        // sound: "default" // You can set a default sound here if you want
-
-
-
-      },
-
-
-
-      data: { // Data payload for custom handling in `onMessageReceived`
-
-
-
-        type: "ring",
-
-
-
-        callerId: callerId,
-
-
-
-        "token": agoraToken || "",
-
-
-
-        "channel": agoraChannel || ""
-
-
-
-      },
-
-
-
-      android: {
-
-
-
-        priority: "high", // Keep high priority for timely delivery and heads-up notification
-
-
-
-        notification: {
-
-
-
-          channel_id: "incoming_call_channel", // IMPORTANT: This must match the channel ID in your Android app
-
-
-
-          // sound: "ringtone", // Reference your custom sound file (e.g., res/raw/ringtone.ogg)
-
-
-
-          // You can also add other properties like icon, color etc.
-
-
-
-          // click_action: "FLUTTER_NOTIFICATION_CLICK" // This is for Flutter, but conceptually similar for native Android if you want to route to a specific activity
-
-
-
-          visibility: "public", // To show content on lock screen
-
-
-
-          // Use `full_screen_intent` for critical alerts like incoming calls
-
-
-
-          // This will require additional setup on the Android side (manifest permission)
-
-
-
-          // https://developer.android.com/develop/ui/views/notifications/notification-channels#full_screen_intent
-
-
-
-          // full_screen_intent: true // Set to true to launch activity directly when device is locked/idle
-
-
-
-        }
-
-
-
-      }
-
-
-
-    };
-
-
-
-
-
-
-
-    const response = await admin.messaging().send(message);
-
-
-
-    console.log('FCM Message sent successfully:', response);
-
-
-
-    return res.status(200).send('Notification sent');
-
-
-
-  } catch (error) {
-
-
-
-    console.error('Error sending FCM:', error);
-
-
-
-    return res.status(500).send('Internal Server Error');
-
-
-
-  }
-
-
-
+  try {
+    const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
+
+    if (!fcmToken || !callerId) {
+      return res.status(400).send('Missing fcmToken or callerId');
+    }
+    
+    // Construct the notification body for the alert banner
+    const notificationBody = `Incoming call from ${callerId}`;
+
+    const message = {
+      token: fcmToken,
+      
+      // The `notification` block is primarily for system display on both platforms.
+      notification: {
+        title: "Incoming Call",
+        body: notificationBody,
+        // sound: "default" 
+      },
+      
+      // Data payload for custom handling when the app is active
+      data: { 
+        type: "ring",
+        callerId: callerId,
+        "token": agoraToken || "",
+        "channel": agoraChannel || ""
+      },
+      
+      // 🚨 APNS block for reliable iOS Cold-Start Launch (THE FIX)
+      apns: {
+        headers: {
+            // Priority 10 ensures immediate delivery and high-priority app wake-up
+            'apns-priority': '10', 
+            'apns-push-type': 'alert'
+        },
+        payload: {
+          aps: {
+            // The alert content
+            alert: {
+                title: "Incoming Call",
+                body: notificationBody
+            },
+            // Specify a sound for the call. If you have a custom ringtone, use its name here.
+            sound: "default" 
+          },
+          
+          // 🚨 Add the CRITICAL CALL DATA to the APNS payload root
+          // These keys (token, channel, callerId) must be at the root to be easily accessible
+          // in application:didFinishLaunchingWithOptions: (userInfo dictionary)
+          token: agoraToken || "",
+          channel: agoraChannel || "",
+          callerId: callerId
+        }
+      },
+      
+      // Android specific settings (unchanged)
+      android: {
+        priority: "high", 
+        notification: {
+          channel_id: "incoming_call_channel", 
+          visibility: "public",
+        }
+      }
+    };
+
+    const response = await admin.messaging().send(message);
+    console.log('FCM Message sent successfully:', response);
+    return res.status(200).send('Notification sent');
+  } catch (error) {
+    console.error('Error sending FCM:', error);
+    return res.status(500).send('Internal Server Error');
+  }
 });
-
-
-
-
-
-
 
 // Add root GET route
-
-
-
 app.get('/', (req, res) => {
-
-
-
-  res.send('FCM Server is running');
-
-
-
+  res.send('FCM Server is running');
 });
 
-
-
-
-
-
-
 // Start server
-
-
-
 const port = process.env.PORT || 3000;
-
-
-
 app.listen(port, () => {
-
-
-
-  console.log(`Server running on port ${port}`);
-
-
-
+  console.log(`Server running on port ${port}`);
 });
