@@ -29,68 +29,66 @@ app.post('/sendRingingNotification', async (req, res) => {
     const message = {
       token: fcmToken,
       
-      // The `notification` block is primarily for system display on both platforms.
+      // The `notification` block defines what appears in the notification banner
       notification: {
         title: "Incoming Call",
         body: notificationBody,
-        // sound: "default" 
+        sound: "ringtone.caf"   // 🔔 Custom ringtone (must be bundled in your iOS app)
       },
       
-      // Data payload for custom handling when the app is active
+      // Custom data payload for in-app handling
       data: { 
         type: "ring",
         callerId: callerId,
-        "token": agoraToken || "",
-        "channel": agoraChannel || ""
+        token: agoraToken || "",
+        channel: agoraChannel || ""
       },
       
-      // 🚨 APNS block for reliable iOS Cold-Start Launch (THE FIX)
+      // ✅ iOS-specific configuration (APNs)
       apns: {
         headers: {
-            // Priority 10 ensures immediate delivery and high-priority app wake-up
-            'apns-priority': '10', 
-            'apns-push-type': 'alert'
+          'apns-priority': '10',           // Immediate delivery
+          'apns-push-type': 'alert'
         },
         payload: {
           aps: {
-            // The alert content
             alert: {
-                title: "Incoming Call",
-                body: notificationBody
+              title: "Incoming Call",
+              body: notificationBody
             },
-            // Specify a sound for the call. If you have a custom ringtone, use its name here.
-            sound: "default" 
+            // 🔊 This must match the sound file in your app bundle (e.g., ringtone.caf)
+            sound: "ringtone.mp3",
+            category: "INCOMING_CALL"       // Optional, useful for iOS call UI later
           },
-          
-          // 🚨 Add the CRITICAL CALL DATA to the APNS payload root
-          // These keys (token, channel, callerId) must be at the root to be easily accessible
-          // in application:didFinishLaunchingWithOptions: (userInfo dictionary)
+          // Make sure critical info is also accessible on cold start
           token: agoraToken || "",
           channel: agoraChannel || "",
           callerId: callerId
         }
       },
-      
-      // Android specific settings (unchanged)
+
+      // ✅ Android-specific configuration
       android: {
-        priority: "high", 
+        priority: "high",
         notification: {
-          channel_id: "incoming_call_channel", 
+          channel_id: "incoming_call_channel",
+          sound: "ringtone",                // 🔊 Android looks for `res/raw/ringtone.mp3`
           visibility: "public",
+          defaultSound: false               // Don’t override custom sound
         }
       }
     };
 
     const response = await admin.messaging().send(message);
-    console.log('FCM Message sent successfully:', response);
+    console.log('✅ FCM Message sent successfully:', response);
     return res.status(200).send('Notification sent');
   } catch (error) {
-    console.error('Error sending FCM:', error);
+    console.error('❌ Error sending FCM:', error);
     return res.status(500).send('Internal Server Error');
   }
 });
 
-// Add root GET route
+// Root route
 app.get('/', (req, res) => {
   res.send('FCM Server is running');
 });
@@ -98,5 +96,5 @@ app.get('/', (req, res) => {
 // Start server
 const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`🚀 Server running on port ${port}`);
 });
