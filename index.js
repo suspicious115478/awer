@@ -50,7 +50,7 @@ app.post('/sendRingingNotification', async (req, res) => {
               title: "Incoming Call",
               body: notificationBody,
             },
-            sound: "ringtone.caf", // 🔊 Custom ringtone from your app bundle
+            sound: "ringtone.mp3", // 🔊 Custom ringtone from your app bundle
             category: "INCOMING_CALL",
           },
           token: agoraToken || "",
@@ -83,3 +83,4 @@ app.get('/', (req, res) => res.send('FCM Server is running'));
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
+
