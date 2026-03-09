@@ -9,6 +9,7 @@ admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
+// ✅ RINGING NOTIFICATION
 app.post('/sendRingingNotification', async (req, res) => {
   try {
     const { fcmToken, callerId, agoraToken, agoraChannel } = req.body;
@@ -19,30 +20,17 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const message = {
       token: fcmToken,
-
-      // ✅ FIX: notification field BILKUL NAHI
-      // notification field hoga to Android 2 notifications dikhata hai:
-      //   1. FCM ka apna system notification (purana Agora wala)
-      //   2. Flutter ka custom full-screen notification
-      // Sirf data bhejo — Flutter ka _firebaseMessagingBackgroundHandler handle karega
-
-      // ✅ Sirf data — Flutter background handler trigger hoga
       data: {
         type: "ring",
         callerId: callerId,
-        agoraToken: agoraToken || "",   // Java VideoCallActivity ke saath match
-        agoraChannel: agoraChannel || "", // Java VideoCallActivity ke saath match
-        token: agoraToken || "",          // Flutter fallback
-        channel: agoraChannel || "",      // Flutter fallback
+        agoraToken: agoraToken || "",   
+        agoraChannel: agoraChannel || "", 
+        token: agoraToken || "",         
+        channel: agoraChannel || "",      
       },
-
-      // ✅ Android: high priority taaki killed app bhi wake ho
       android: {
         priority: "high",
-        // notification block nahi — data-only message hai
       },
-
-      // ✅ iOS: content-available=1 se background mein trigger hoga
       apns: {
         headers: {
           'apns-priority': '10',
@@ -50,11 +38,10 @@ app.post('/sendRingingNotification', async (req, res) => {
         },
         payload: {
           aps: {
-            'content-available': 1, // background wakeup
+            'content-available': 1, 
             sound: "ringtone.mp3",
             category: "INCOMING_CALL",
           },
-          // Data iOS ke liye bhi payload mein
           type: "ring",
           callerId: callerId,
           agoraToken: agoraToken || "",
@@ -69,6 +56,52 @@ app.post('/sendRingingNotification', async (req, res) => {
 
   } catch (error) {
     console.error("❌ FCM Error:", error);
+    return res.status(500).send("Internal Server Error");
+  }
+});
+
+// ✅ CANCEL RINGING NOTIFICATION (NEW)
+app.post('/cancelCall', async (req, res) => {
+  try {
+    const { uid, acceptedDeviceId } = req.body;
+
+    if (!uid) {
+      return res.status(400).send('Missing uid');
+    }
+
+    const snapshot = await admin.database().ref(`calls/${uid}/secondaryDevices`).once('value');
+    const secondaryDevices = snapshot.val();
+
+    if (!secondaryDevices) {
+      return res.status(200).send("No secondary devices found");
+    }
+
+    const tokensToCancel = [];
+
+    // Jisne call uthai (ya reject ki), use chhodkar baaki sabke tokens nikalo
+    for (const [deviceId, deviceData] of Object.entries(secondaryDevices)) {
+      if (deviceId !== acceptedDeviceId && deviceData.fcmToken) {
+        tokensToCancel.push(deviceData.fcmToken);
+      }
+    }
+
+    if (tokensToCancel.length === 0) {
+      return res.status(200).send("No other devices to cancel");
+    }
+
+    const message = {
+      data: {
+        type: "cancel" 
+      },
+      tokens: tokensToCancel 
+    };
+
+    const response = await admin.messaging().sendEachForMulticast(message);
+    console.log(`✅ Cancel FCM sent to ${response.successCount} devices.`);
+    return res.status(200).send("Cancel notifications sent");
+
+  } catch (error) {
+    console.error("❌ Cancel FCM Error:", error);
     return res.status(500).send("Internal Server Error");
   }
 });
