@@ -21,28 +21,27 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const notificationBody = `Incoming call from ${callerId}`;
 
-  const message = {
-  token: fcmToken,
+    const message = {
+      token: fcmToken,
 
-  // ❌ REMOVE notification block completely
+      // ✅ ONLY DATA (IMPORTANT)
+      data: {
+        type: "ring",
+        callerId: callerId,
+        token: agoraToken || "",
+        channel: agoraChannel || "",
+      },
 
-  data: {
-    type: "ring",
-    callerId: callerId,
-    token: agoraToken || "",
-    channel: agoraChannel || "",
-  },
+      // ✅ ANDROID CONFIG
+      android: {
+        priority: "high",
+      },
 
-  android: {
-    priority: "high",
-  },
-};
-
-      // ✅ iOS-specific APNS configuration
+      // ✅ iOS CONFIG (optional)
       apns: {
         headers: {
-          'apns-priority': '10',
-          'apns-push-type': 'alert',
+          "apns-priority": "10",
+          "apns-push-type": "alert",
         },
         payload: {
           aps: {
@@ -50,31 +49,25 @@ app.post('/sendRingingNotification', async (req, res) => {
               title: "Incoming Call",
               body: notificationBody,
             },
-            sound: "ringtone.mp3", // 🔊 Custom ringtone from your app bundle
-            category: "INCOMING_CALL",
+            sound: "default",
           },
-          token: agoraToken || "",
-          channel: agoraChannel || "",
-          callerId: callerId,
-        },
-      },
-
-      // ✅ Android configuration
-      android: {
-        priority: "high",
-        notification: {
-          channel_id: "incoming_call_channel",
-          sound: "ringtone", // 🔊 must match a file in res/raw/ringtone.mp3
-          visibility: "public",
         },
       },
     };
 
     const response = await admin.messaging().send(message);
-    console.log("✅ FCM Message sent successfully:", response);
+    console.log("✅ FCM sent:", response);
+
     return res.status(200).send("Notification sent");
+
   } catch (error) {
     console.error("❌ Error sending FCM:", error);
+
+    // 🔥 HANDLE TOKEN ERROR
+    if (error.code === "messaging/registration-token-not-registered") {
+      console.log("⚠️ Invalid token — remove from DB");
+    }
+
     return res.status(500).send("Internal Server Error");
   }
 });
@@ -83,4 +76,3 @@ app.get('/', (req, res) => res.send('FCM Server is running'));
 
 const port = process.env.PORT || 3000;
 app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
-
