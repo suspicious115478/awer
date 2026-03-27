@@ -21,22 +21,22 @@ app.post('/sendRingingNotification', async (req, res) => {
 
     const notificationBody = `Incoming call from ${callerId}`;
 
-    const message = {
-      token: fcmToken,
+  const message = {
+  token: fcmToken,
 
-      // ✅ only include title/body here — no `sound` key!
-      notification: {
-        title: "Incoming Call",
-        body: notificationBody,
-      },
+  // ❌ REMOVE notification block completely
 
-      // Custom data for your app
-      data: {
-        type: "ring",
-        callerId: callerId,
-        token: agoraToken || "",
-        channel: agoraChannel || "",
-      },
+  data: {
+    type: "ring",
+    callerId: callerId,
+    token: agoraToken || "",
+    channel: agoraChannel || "",
+  },
+
+  android: {
+    priority: "high",
+  },
+};
 
       // ✅ iOS-specific APNS configuration
       apns: {
