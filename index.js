@@ -1,3 +1,6 @@
+
+
+
 const express = require('express');
 const admin = require('firebase-admin');
 const bodyParser = require('body-parser');
@@ -24,7 +27,13 @@ app.post('/sendRingingNotification', async (req, res) => {
     const message = {
       token: fcmToken,
 
-      // ✅ ONLY DATA (IMPORTANT)
+      // ✅ only include title/body here — no `sound` key!
+      notification: {
+        title: "Incoming Call",
+        body: notificationBody,
+      },
+
+      // Custom data for your app
       data: {
         type: "ring",
         callerId: callerId,
@@ -32,16 +41,11 @@ app.post('/sendRingingNotification', async (req, res) => {
         channel: agoraChannel || "",
       },
 
-      // ✅ ANDROID CONFIG
-      android: {
-        priority: "high",
-      },
-
-      // ✅ iOS CONFIG (optional)
+      // ✅ iOS-specific APNS configuration
       apns: {
         headers: {
-          "apns-priority": "10",
-          "apns-push-type": "alert",
+          'apns-priority': '10',
+          'apns-push-type': 'alert',
         },
         payload: {
           aps: {
@@ -49,25 +53,31 @@ app.post('/sendRingingNotification', async (req, res) => {
               title: "Incoming Call",
               body: notificationBody,
             },
-            sound: "default",
+            sound: "ringtone.mp3", // 🔊 Custom ringtone from your app bundle
+            category: "INCOMING_CALL",
           },
+          token: agoraToken || "",
+          channel: agoraChannel || "",
+          callerId: callerId,
+        },
+      },
+
+      // ✅ Android configuration
+      android: {
+        priority: "high",
+        notification: {
+          channel_id: "incoming_call_channel",
+          sound: "ringtone", // 🔊 must match a file in res/raw/ringtone.mp3
+          visibility: "public",
         },
       },
     };
 
     const response = await admin.messaging().send(message);
-    console.log("✅ FCM sent:", response);
-
+    console.log("✅ FCM Message sent successfully:", response);
     return res.status(200).send("Notification sent");
-
   } catch (error) {
     console.error("❌ Error sending FCM:", error);
-
-    // 🔥 HANDLE TOKEN ERROR
-    if (error.code === "messaging/registration-token-not-registered") {
-      console.log("⚠️ Invalid token — remove from DB");
-    }
-
     return res.status(500).send("Internal Server Error");
   }
 });
