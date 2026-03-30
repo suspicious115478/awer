@@ -60,11 +60,7 @@ app.post('/sendRingingNotification', async (req, res) => {
       // ✅ Android configuration
       android: {
         priority: "high",
-        notification: {
-          channel_id: "incoming_call_channel",
-          sound: "ringtone", // 🔊 must match a file in res/raw/ringtone.mp3
-          visibility: "public",
-        },
+      
       },
     };
 
