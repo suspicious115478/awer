@@ -27,11 +27,7 @@ app.post('/sendRingingNotification', async (req, res) => {
       token: fcmToken,
 
       // ✅ only include title/body here — no `sound` key!
-      notification: {
-        title: "Incoming Call",
-        body: notificationBody,
-      },
-
+   
       // Custom data for your app
       data: {
         type: "ring",
